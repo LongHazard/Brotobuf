@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+/* Standard well-defined IP protocols.  */
+enum IPProto {
+    IP = 0;	       /* Dummy protocol for TCP.  */
+    ICMP = 1;	   /* Internet Control Message Protocol.  */
+    IGMP = 2;	   /* Internet Group Management Protocol. */
+    IPIP = 4;	   /* IPIP tunnels (older KA9Q tunnels use 94).  */
+    TCP = 6;	   /* Transmission Control Protocol.  */
+    EGP = 8;	   /* Exterior Gateway Protocol.  */
+    PUP = 12;	   /* PUP protocol.  */
+    UDP = 17;	   /* User Datagram Protocol.  */
+    IDP = 22;	   /* XNS IDP protocol.  */
+    TP = 29;	   /* SO Transport Protocol Class 4.  */
+    DCCP = 33;	   /* Datagram Congestion Control Protocol.  */
+    IPV6 = 41;     /* IPv6 header.  */
+    RSVP = 46;	   /* Reservation Protocol.  */
+    GRE = 47;	   /* General Routing Encapsulation.  */
+    ESP = 50;      /* encapsulating security payload.  */
+    AH = 51;       /* authentication header.  */
+    MTP = 92;	   /* Multicast Transport Protocol.  */
+    BEETPH = 94;   /* IP option pseudo header for BEET.  */
+    ENCAP = 98;	   /* Encapsulation Header.  */
+    PIM = 103;	   /* Protocol Independent Multicast.  */
+    COMP = 108;	   /* Compression Header Protocol.  */
+    SCTP = 132;	   /* Stream Control Transmission Protocol.  */
+    UDPLITE = 136; /* UDP-Lite protocol.  */
+    MPLS = 137;    /* MPLS in IP.  */
+    ETHERNET = 143; /* Ethernet-within-IPv6 Encapsulation.  */
+    RAW = 255;	   /* Raw IP packets.  */
+    MPTCP = 262;   /* Multipath TCP connection.  */
+
+}
+
+enum StreamDirection {
+    SD_UNKNOWN = 0;
+    SD_UPLINK = 1;
+    SD_DOWNLINK = 2;
+}
+
+// main event log
+message EventLog {
+    string timestamp = 1;   // message generate timestamp
+    string start_time = 2;  // flow start timestamp
+    string src_ip = 3;      // source IP
+    string dest_ip = 4;     // dest IP
+	int32 src_port = 5;	    // source port
+    int32 dest_port = 6;    // dest port
+    IPProto ip_proto = 7;   // transport protocol (TCP/UDP/SCTP)
+    oneof event_type {
+        FlowLog flow = 8;
+        DnsLog dns = 9;
+        HttpLog http = 10;
+        PacketLog packet = 11;
+        StreamLog stream = 12;
+    }
+}
+
+message TCPPacketMeta {
+    uint32 tcpflags = 1;
+    uint32 hlen = 2;
+    uint32 calc_win_size = 3;
+}
+
+message PacketMeta {
+	uint32 size = 1;
+	uint32 time = 2; // packet time offset with flow start_time in micro secs
+	uint32 plen = 3; // payload length of transport proto (TCP/UDP/SCTP)
+	TCPPacketMeta tcp_meta = 4;
+}
+
+message PacketLog {
+    string app_protocol = 1;        // application protocol
+    string host_name = 2;           // hostname (TLS SNI/HTTP...)
+    repeated PacketMeta ul_packets = 3;
+    repeated PacketMeta dl_packets = 4;
+}
+
+// flow data log
+message FlowLog {
+    uint32 dl_data_bytes = 1;      // downlink data bytes
+    uint32 ul_data_bytes = 2;      // uplink data bytes
+    uint32 dl_transport_bytes = 3; // downlink transport bytes
+    uint32 ul_transport_bytes = 4; // uplink transport bytes
+    uint32 dl_packets = 5;         // downlink packets
+    uint32 ul_packets = 6;         // uplink packets
+    uint32 server_rsp_time = 7;    // server response time in ms
+    uint32 client_rsp_time = 8;    // client response time in ms
+    string app_protocol = 9;       // application protocol
+    string host_name = 10;         // hostname (TLS SNI/HTTP/DNS...)
+    uint64 dl_last_pkt_time = 11;  // downlink last packet time
+    uint64 dl_first_pkt_time = 12; // downlink first packet time
+    uint64 ul_last_pkt_time = 13;  // uplink last packet time
+    uint64 ul_first_pkt_time = 14; // uplink first packet time
+    int32 flow_state = 15;         // current state of this flow
+}
+
+// stream data log
+message StreamLog {
+    uint32 sTos = 1;        // source Type of Service
+    uint32 dTos = 2;        // destination Type of Service
+    uint32 TotPkts = 3;     // total number of packets exchanged 
+    uint32 TotBytes = 4;    // total bytes exchanged 
+    uint32 SrcBytes = 5;    // number of bytes sent by source
+    string app_protocol = 6;// application protocol
+    uint32 state = 7;       // current state of this stream
+}
+
+// HTTP log message
+message HttpLog {
+    uint64 req_start_time = 1;
+    uint64 req_end_time = 2;
+    uint64 rsp_start_time = 3;
+    uint64 rsp_end_time = 4;
+    string req_method = 5;
+    string req_uri = 6;
+    string req_host = 7;
+    string user_agent = 8;
+    string req_version = 9;
+    string status_code = 10;
+    string content_type = 11;
+    string referer = 12;
+    uint64 req_length = 13;
+    uint64 rsp_length = 14;
+    uint64 defined_content_len = 15;
+    uint64 actual_content_len = 16;
+    uint32 flag = 17;
+}
+
+// DNS Log message
+message DnsLog {
+    uint64 time_start_record = 1;
+    uint64 time_end_record = 2;
+    int32 transaction_id = 3;
+    string query_name = 4;
+    int32 query_flags = 5;
+    int32 query_type = 6;
+    int32 query_class = 7;
+    int32 rsp_flags = 8;
+    repeated string dns_ans = 9;
+}
